@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "@gmod/vcf": "^2.0.2",
+    "cross-fetch": "^3.0.1",
+    "express": "^4.16.4"
+  },
+  "name": "protein_data_service",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:cmdcolin/protein_data_service.git",
+  "author": "Colin <colin.diesh@gmail.com>",
+  "license": "MIT"
+}
