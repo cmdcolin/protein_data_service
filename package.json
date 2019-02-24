@@ -1,8 +1,12 @@
 {
   "dependencies": {
     "@gmod/vcf": "^2.0.2",
+    "babel-runtime": "^6.26.0",
     "cross-fetch": "^3.0.1",
     "express": "^4.16.4"
+  },
+  "scripts": {
+    "start": "node server.js"
   },
   "name": "protein_data_service",
   "version": "1.0.0",

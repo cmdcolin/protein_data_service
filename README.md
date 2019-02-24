@@ -5,11 +5,11 @@ Collects some data from different resources about genes/proteins
 
 ## Install
 
-Run `yarn`
+    yarn
 
 ## Run
 
-node server.js
+    node server.js
 
 ## Usage
 
