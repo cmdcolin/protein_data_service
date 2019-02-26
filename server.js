@@ -25,7 +25,7 @@ function parseText(text, attributes) {
     return data
   })
 }
-function fetchDomains(ensemblGeneId) {
+function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
   const attributes = [
     'ensembl_gene_id',
     'uniprotswissprot',
@@ -67,9 +67,16 @@ function fetchDomains(ensemblGeneId) {
   return fetch(bioMartQueryUrl)
     .then(r => r.text())
     .then(text => parseText(text, attributes))
+    .then(domains =>
+      domains.filter(
+        d =>
+          !ensemblTranscriptId ||
+          d.ensembl_transcript_id === ensemblTranscriptId,
+      ),
+    )
 }
 
-function fetchVariants(ensemblGeneId) {
+function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
   const attributes = [
     'refsnp_id',
     'refsnp_source',
@@ -119,11 +126,17 @@ function fetchVariants(ensemblGeneId) {
     .then(r => r.text())
     .then(text => parseText(text, attributes))
     .then(variants => {
-      variants.forEach(v => {
-        v.count = varFreqs[v.refsnp_id]
+      return variants.map(v => {
+        return Object.assign(v, { count: varFreqs[v.refsnp_id] })
       })
-      return variants
     })
+    .then(variants =>
+      variants.filter(
+        v =>
+          !ensemblTranscriptId ||
+          v.ensembl_transcript_stable_id === ensemblTranscriptId,
+      ),
+    )
 }
 function startServer() {
   const app = express()
@@ -131,12 +144,12 @@ function startServer() {
 
   app.get('/', async (req, res, next) => {
     try {
-      const { ensemblGeneId } = req.query
+      const { ensemblGeneId, ensemblTranscriptId } = req.query
       if (!ensemblGeneId) {
         throw new Error('no ensemblGeneId specified')
       }
-      const variantFetch = fetchVariants(ensemblGeneId)
-      const domainFetch = fetchDomains(ensemblGeneId)
+      const variantFetch = fetchVariants(ensemblGeneId, ensemblTranscriptId)
+      const domainFetch = fetchDomains(ensemblGeneId, ensemblTranscriptId)
       Promise.all([variantFetch, domainFetch]).then(([variants, domains]) => {
         res.status(200).send({
           variants,
@@ -156,7 +169,9 @@ function startServer() {
 
 console.log('parsing variant frequencies before app startup, please wait...')
 const filename = 'data/frequencies.txt.gz'
-zlib.gunzipSync(fs.readFileSync(filename)).toString()
+zlib
+  .gunzipSync(fs.readFileSync(filename))
+  .toString()
   .split('\n')
   .forEach(line => {
     const [variantId, count] = line.split('\t')
