@@ -2,7 +2,7 @@
 const url = require('url')
 const express = require('express')
 const fetch = require('cross-fetch')
-//const vcf = require('@gmod/vcf')
+// const vcf = require('@gmod/vcf')
 
 // const entrezGene = 3845
 
@@ -11,20 +11,18 @@ const fetch = require('cross-fetch')
 //     .then(res => res.text())
 //     .then(text => JSON.parse(text))
 // }
-
-function fetchDomains(ensemblGeneId) {
-  function parseText(text) {
-    const lines = text.split(/\s*\n\s*/).filter(line => /\S/.test(line))
-    return lines.map(line => {
-      const fields = line.split('\t')
-      const data = {}
-      attributes.forEach(a => {
-        data[a] = fields.shift()
-      })
-      return data
+function parseText(text, attributes) {
+  const lines = text.split(/\s*\n\s*/).filter(line => /\S/.test(line))
+  return lines.map(line => {
+    const fields = line.split('\t')
+    const data = {}
+    attributes.forEach(a => {
+      data[a] = fields.shift()
     })
-  }
-
+    return data
+  })
+}
+function fetchDomains(ensemblGeneId) {
   const attributes = [
     'ensembl_gene_id',
     'uniprotswissprot',
@@ -65,23 +63,10 @@ function fetchDomains(ensemblGeneId) {
   // console.log('query url is', bioMartQueryUrl)
   return fetch(bioMartQueryUrl)
     .then(r => r.text())
-    .then(parseText)
+    .then(text => parseText(text, attributes))
 }
 
-
 function fetchVariants(ensemblGeneId) {
-  function parseText(text) {
-    const lines = text.split(/\s*\n\s*/).filter(line => /\S/.test(line))
-    return lines.map(line => {
-      const fields = line.split('\t')
-      const data = {}
-      attributes.forEach(a => {
-        data[a] = fields.shift()
-      })
-      return data
-    })
-  }
-
   const attributes = [
     'refsnp_id',
     'refsnp_source',
@@ -108,7 +93,6 @@ function fetchVariants(ensemblGeneId) {
     'sift_score',
   ]
 
-
   const query = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Query>
 <Query  virtualSchemaName = "default" formatter = "TSV" header = "0" uniqueRows = "0" count = "" datasetConfigVersion = "0.6" >
@@ -130,33 +114,33 @@ function fetchVariants(ensemblGeneId) {
   // console.log('query url is', bioMartQueryUrl)
   return fetch(bioMartQueryUrl)
     .then(r => r.text())
-    .then(parseText)
+    .then(text => parseText(text, attributes))
 }
-
-
-
 
 const app = express()
 const port = 2999
 
-app.get('/:ensemblGeneId', async (req, res, next) => {
-  const { ensemblGeneId } = req.params
-  //const geneFetch = fetchGeneInfo(ensemblGeneId)
-  const variantFetch = fetchVariants(ensemblGeneId)
-  const domainFetch = fetchDomains(ensemblGeneId)
-  Promise.all([variantFetch, domainFetch]).then(
-    ([variants, domains]) => {
+app.get('/', async (req, res, next) => {
+  try {
+    const { ensemblGeneId } = req.query
+    if(!ensemblGeneId) {
+      throw new Error('no ensembl gene id specified')
+    }
+    const variantFetch = fetchVariants(ensemblGeneId)
+    const domainFetch = fetchDomains(ensemblGeneId)
+    Promise.all([variantFetch, domainFetch]).then(([variants, domains]) => {
       res.status(200).send({
         variants,
         domains,
       })
-    },
-    error => next(error),
-  )
+    })
+  } catch (error) {
+    next(error)
+  }
 })
 
 app.listen(port, () =>
   console.log(
-    `Demo data service listening on port ${port}. \n\nTry it out with\n     curl http://localhost:${port}/ENSG00000000003`,
+    `Demo data service listening on port ${port}. \n\nTry it out with\n     curl http://localhost:${port}/?geneId=ENSG00000000003`,
   ),
 )
