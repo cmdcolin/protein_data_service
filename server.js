@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 const url = require('url')
+const fs = require('fs')
 const express = require('express')
 const fetch = require('cross-fetch')
-// const vcf = require('@gmod/vcf')
 
-// const entrezGene = 3845
-
+// unused
 // function fetchGeneInfo(entrezGene) {
 //   return fetch(`http://mygene.info/v3/gene/${entrezGene}`)
 //     .then(res => res.text())
 //     .then(text => JSON.parse(text))
 // }
+
 function parseText(text, attributes) {
   const lines = text.split(/\s*\n\s*/).filter(line => /\S/.test(line))
   return lines.map(line => {
@@ -116,31 +116,42 @@ function fetchVariants(ensemblGeneId) {
     .then(r => r.text())
     .then(text => parseText(text, attributes))
 }
+function startServer() {
+  const app = express()
+  const port = 2999
 
-const app = express()
-const port = 2999
-
-app.get('/', async (req, res, next) => {
-  try {
-    const { ensemblGeneId } = req.query
-    if(!ensemblGeneId) {
-      throw new Error('no ensembl gene id specified')
-    }
-    const variantFetch = fetchVariants(ensemblGeneId)
-    const domainFetch = fetchDomains(ensemblGeneId)
-    Promise.all([variantFetch, domainFetch]).then(([variants, domains]) => {
-      res.status(200).send({
-        variants,
-        domains,
+  app.get('/', async (req, res, next) => {
+    try {
+      const { ensemblGeneId } = req.query
+      if (!ensemblGeneId) {
+        throw new Error('no ensembl gene id specified')
+      }
+      const variantFetch = fetchVariants(ensemblGeneId)
+      const domainFetch = fetchDomains(ensemblGeneId)
+      Promise.all([variantFetch, domainFetch]).then(([variants, domains]) => {
+        res.status(200).send({
+          variants,
+          domains,
+        })
       })
-    })
-  } catch (error) {
-    next(error)
-  }
-})
+    } catch (error) {
+      next(error)
+    }
+  })
+  app.listen(port, () => {
+    console.log(
+      `Demo data service listening on port ${port}. \n\nTry it out with\n     curl http://localhost:${port}/?geneId=ENSG00000000003`,
+    )
+  })
+}
 
-app.listen(port, () =>
-  console.log(
-    `Demo data service listening on port ${port}. \n\nTry it out with\n     curl http://localhost:${port}/?geneId=ENSG00000000003`,
-  ),
-)
+console.log('parsing frequencies')
+const varFreqs = {}
+fs.readFileSync('data/frequencies.txt', 'ascii')
+  .split('\n')
+  .forEach(line => {
+    const [variantId, count] = line.split('\t')
+    varFreqs[variantId] = +count
+  })
+
+startServer()
