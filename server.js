@@ -5,6 +5,8 @@ const express = require('express')
 const fetch = require('cross-fetch')
 const zlib = require('zlib')
 
+const varFreqs = {}
+
 // unused
 // function fetchGeneInfo(entrezGene) {
 //   return fetch(`http://mygene.info/v3/gene/${entrezGene}`)
@@ -116,6 +118,12 @@ function fetchVariants(ensemblGeneId) {
   return fetch(bioMartQueryUrl)
     .then(r => r.text())
     .then(text => parseText(text, attributes))
+    .then(variants => {
+      variants.forEach(v => {
+        v.count = varFreqs[v.refsnp_id]
+      })
+      return variants
+    })
 }
 function startServer() {
   const app = express()
@@ -146,8 +154,7 @@ function startServer() {
   })
 }
 
-console.log('parsing frequencies')
-const varFreqs = {}
+console.log('parsing variant frequencies before app startup, please wait...')
 const filename = 'data/frequencies.txt.gz'
 zlib.gunzipSync(fs.readFileSync(filename)).toString()
   .split('\n')
@@ -155,5 +162,5 @@ zlib.gunzipSync(fs.readFileSync(filename)).toString()
     const [variantId, count] = line.split('\t')
     varFreqs[variantId] = +count
   })
-
+console.log('done')
 startServer()
