@@ -3,6 +3,7 @@ const url = require('url')
 const fs = require('fs')
 const express = require('express')
 const fetch = require('cross-fetch')
+const zlib = require('zlib')
 
 // unused
 // function fetchGeneInfo(entrezGene) {
@@ -124,7 +125,7 @@ function startServer() {
     try {
       const { ensemblGeneId } = req.query
       if (!ensemblGeneId) {
-        throw new Error('no ensembl gene id specified')
+        throw new Error('no ensemblGeneId specified')
       }
       const variantFetch = fetchVariants(ensemblGeneId)
       const domainFetch = fetchDomains(ensemblGeneId)
@@ -140,14 +141,15 @@ function startServer() {
   })
   app.listen(port, () => {
     console.log(
-      `Demo data service listening on port ${port}. \n\nTry it out with\n     curl http://localhost:${port}/?geneId=ENSG00000000003`,
+      `Demo data service listening on port ${port}. \n\nTry it out with\n     curl http://localhost:${port}/?ensemblGeneId=ENSG00000000003`,
     )
   })
 }
 
 console.log('parsing frequencies')
 const varFreqs = {}
-fs.readFileSync('data/frequencies.txt', 'ascii')
+const filename = 'data/frequencies.txt.gz'
+zlib.gunzipSync(fs.readFileSync(filename)).toString()
   .split('\n')
   .forEach(line => {
     const [variantId, count] = line.split('\t')
