@@ -44,6 +44,9 @@ function fetchSequences(ensemblGeneId) {
 function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
   const attributes = [
     'ensembl_gene_id',
+    'ensembl_transcript_id',
+    'ensembl_peptide_id',
+    'transcript_biotype',
     'uniprotswissprot',
     'entrezgene',
     'refseq_mrna',
@@ -52,7 +55,6 @@ function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
     'start_position',
     'end_position',
     'external_gene_name',
-    'ensembl_transcript_id',
     'family',
     'family_description',
     'interpro',
