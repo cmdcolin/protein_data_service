@@ -25,6 +25,22 @@ function parseText(text, attributes) {
     return data
   })
 }
+
+function fetchSequences(ensemblGeneId) {
+  const ensemblApiQueryUrl = url.format({
+    protocol: 'http',
+    host: 'rest.ensembl.org',
+    pathname: `/sequence/id/${ensemblGeneId}`,
+    query: {
+      'content-type': 'application/json',
+      type: 'protein',
+      multiple_sequences: 1,
+    },
+  })
+  return fetch(ensemblApiQueryUrl)
+    .then(r => r.json())
+}
+
 function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
   const attributes = [
     'ensembl_gene_id',
@@ -146,11 +162,12 @@ function startServer() {
       }
       const variantFetch = fetchVariants(ensemblGeneId, ensemblTranscriptId)
       const domainFetch = fetchDomains(ensemblGeneId, ensemblTranscriptId)
-      Promise.all([variantFetch, domainFetch]).then(([variants, domains]) => {
-        res.status(200).send({
-          variants,
-          domains,
-        })
+      const sequenceFetch = fetchSequences(ensemblGeneId)
+      const [variants, domains, sequences] = await Promise.all([variantFetch, domainFetch, sequenceFetch])
+      res.status(200).send({
+        variants,
+        domains,
+        sequences
       })
     } catch (error) {
       next(error)
