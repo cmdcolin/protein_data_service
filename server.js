@@ -59,11 +59,9 @@ function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
   const bioMartQueryUrl = url.format({
     protocol: 'http',
     host: 'useast.ensembl.org',
-    // host: 'localhost:2999',
     pathname: '/biomart/martservice',
     query: { query },
   })
-  // console.log('query url is', bioMartQueryUrl)
   return fetch(bioMartQueryUrl)
     .then(r => r.text())
     .then(text => parseText(text, attributes))
@@ -117,11 +115,9 @@ function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
   const bioMartQueryUrl = url.format({
     protocol: 'http',
     host: 'useast.ensembl.org',
-    // host: 'localhost:2999',
     pathname: '/biomart/martservice',
     query: { query },
   })
-  // console.log('query url is', bioMartQueryUrl)
   return fetch(bioMartQueryUrl)
     .then(r => r.text())
     .then(text => parseText(text, attributes))
