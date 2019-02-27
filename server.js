@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const url = require('url')
 const fs = require('fs')
+const cors = require('cors')
 const express = require('express')
 const fetch = require('cross-fetch')
 const zlib = require('zlib')
@@ -155,6 +156,7 @@ function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
 function startServer() {
   const app = express()
   const port = 2999
+  app.use(cors())
 
   app.get('/', async (req, res, next) => {
     try {
