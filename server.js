@@ -42,6 +42,21 @@ function fetchSequences(ensemblGeneId) {
   return fetch(ensemblApiQueryUrl).then(r => r.json())
 }
 
+function fetchCds(ensemblGeneId) {
+  const ensemblApiQueryUrl = url.format({
+    protocol: 'http',
+    host: 'rest.ensembl.org',
+    pathname: `/sequence/id/${ensemblGeneId}`,
+    query: {
+      'content-type': 'application/json',
+      type: 'cds',
+      multiple_sequences: 1,
+    },
+  })
+  return fetch(ensemblApiQueryUrl).then(r => r.json())
+}
+
+
 function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
   const attributes = {
     ensembl_gene_id: 'string',
@@ -152,6 +167,10 @@ function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
           !ensemblTranscriptId ||
           v.ensembl_transcript_stable_id === ensemblTranscriptId,
       ),
+    ).then(variants =>
+      variants.filter(
+        v => v.translation_start<v.translation_end
+      )
     )
 }
 function startServer() {
@@ -168,10 +187,12 @@ function startServer() {
       const variantFetch = fetchVariants(ensemblGeneId, ensemblTranscriptId)
       const domainFetch = fetchDomains(ensemblGeneId, ensemblTranscriptId)
       const sequenceFetch = fetchSequences(ensemblGeneId)
-      const [variants, domains, sequences] = await Promise.all([
+      const cdsFetch = fetchCds(ensemblGeneId)
+      const [variants, domains, sequences, cds] = await Promise.all([
         variantFetch,
         domainFetch,
         sequenceFetch,
+        cdsFetch
       ])
 
       const transcriptsFromDomains = [
@@ -201,21 +222,46 @@ function startServer() {
         })
         sequences.forEach(s => {
           if (s.id === transcriptMap[t].protein_id) {
-            transcriptMap[t].sequence = s.sequence
+            transcriptMap[t].sequence = s.seq
+          }
+        })
+        cds.forEach(s => {
+          if (s.id === t) {
+            transcriptMap[t].translatedSeq = s.seq
           }
         })
       })
-      console.log(JSON.stringify(transcriptMap, null, 4))
 
       const ret = transcriptMap[transcriptsFromDomains[0]]
+      const gene = ret.domains[0].external_gene_name
       const ret2 = {
         protein: {
           name: ret.name,
-          sequences: ret.sequence,
+          sequences: {
+            aminoAcid: ret.sequence,
+            translatedDna: ret.translatedSeq.slice(0, -3)
+          }
         },
+        domains: ret.domains.map(d => {
+          return {
+            uniqueId: `${d.interpro}_${d.interpro_start}_${d.interpro_end}`,
+            start: d.interpro_start,
+            end: d.interpro_end,
+            seq_id: gene,
+            type: d.interpro_short_description,
+          }
+        }),
+        variants: ret.variants.map(v => {
+          return {
+            uniqueId: v.refsnp_id,
+            start: v.translation_start,
+            end: v.translation_end,
+            seq_id: gene,
+            score: v.count,
+          }
+        })
       }
-      console.log(ret2)
-      res.status(200).send(transcriptMap)
+      res.status(200).send(ret2)
     } catch (error) {
       next(error)
     }
