@@ -20,8 +20,9 @@ function parseText(text, attributes) {
   return lines.map(line => {
     const fields = line.split('\t')
     const data = {}
-    attributes.forEach(a => {
-      data[a] = fields.shift()
+    Object.keys(attributes).forEach(a => {
+      const ret = fields.shift()
+      data[a] = attributes[a] == 'int' ? +ret : ret
     })
     return data
   })
@@ -43,27 +44,27 @@ function fetchSequences(ensemblGeneId) {
 }
 
 function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
-  const attributes = [
-    'ensembl_gene_id',
-    'ensembl_transcript_id',
-    'ensembl_peptide_id',
-    'transcript_biotype',
-    'uniprotswissprot',
-    'entrezgene',
-    'refseq_mrna',
-    'description',
-    'chromosome_name',
-    'start_position',
-    'end_position',
-    'external_gene_name',
-    'family',
-    'family_description',
-    'interpro',
-    'interpro_short_description',
-    'interpro_description',
-    'interpro_start',
-    'interpro_end',
-  ]
+  const attributes = {
+    'ensembl_gene_id':'string',
+    'ensembl_transcript_id':'string',
+    'ensembl_peptide_id':'string',
+    'transcript_biotype':'string',
+    'uniprotswissprot':'string',
+    'entrezgene':'string',
+    'refseq_mrna':'string',
+    'description':'string',
+    'chromosome_name':'string',
+    'start_position':'int',
+    'end_position':'int',
+    'external_gene_name':'string',
+    'family':'string',
+    'family_description':'string',
+    'interpro':'string',
+    'interpro_short_description':'string',
+    'interpro_description':'string',
+    'interpro_start':'int',
+    'interpro_end':'int',
+  }
 
   const query = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Query>
@@ -71,7 +72,7 @@ function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
 
 	<Dataset name = "hsapiens_gene_ensembl" interface = "default" >
     <Filter name = "ensembl_gene_id" value = "${ensemblGeneId}"/>
-  ${attributes.map(a => `<Attribute name = "${a}" />\n`)}
+  ${Object.keys(attributes).map(a => `<Attribute name = "${a}" />\n`)}
 	</Dataset>
 </Query>
 `
@@ -94,31 +95,31 @@ function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
 }
 
 function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
-  const attributes = [
-    'refsnp_id',
-    'refsnp_source',
-    'chr_name',
-    'chrom_start',
-    'chrom_end',
-    'ensembl_gene_stable_id',
-    'ensembl_transcript_stable_id',
-    'ensembl_transcript_chrom_strand',
-    'ensembl_type',
-    'consequence_type_tv',
-    'consequence_allele_string',
-    'cdna_start',
-    'cdna_end',
-    'ensembl_peptide_allele',
-    'translation_start',
-    'translation_end',
-    'cds_start',
-    'cds_end',
-    'distance_to_transcript',
-    'polyphen_prediction',
-    'polyphen_score',
-    'sift_prediction',
-    'sift_score',
-  ]
+  const attributes = {
+    'refsnp_id':'string',
+    'refsnp_source':'string',
+    'chr_name':'string',
+    'chrom_start':'int',
+    'chrom_end':'int',
+    'ensembl_gene_stable_id':'string',
+    'ensembl_transcript_stable_id':'string',
+    'ensembl_transcript_chrom_strand':'int',
+    'ensembl_type':'string',
+    'consequence_type_tv':'string',
+    'consequence_allele_string':'string',
+    'cdna_start':'int',
+    'cdna_end':'int',
+    'ensembl_peptide_allele':'string',
+    'translation_start':'int',
+    'translation_end':'int',
+    'cds_start':'int',
+    'cds_end':'int',
+    'distance_to_transcript':'int',
+    'polyphen_prediction':'string',
+    'polyphen_score':'int',
+    'sift_prediction':'string',
+    'sift_score':'int',
+  }
 
   const query = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Query>
@@ -127,7 +128,7 @@ function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
 	<Dataset name = "hsapiens_snp_som" interface = "default" >
     <Filter name = "variation_source" value = "COSMIC"/>
     <Filter name = "ensembl_gene" value = "${ensemblGeneId}"/>
-  ${attributes.map(a => `<Attribute name = "${a}" />\n`)}
+  ${Object.keys(attributes).map(a => `<Attribute name = "${a}" />\n`)}
 	</Dataset>
 </Query>
 `
@@ -168,6 +169,10 @@ function startServer() {
       const domainFetch = fetchDomains(ensemblGeneId, ensemblTranscriptId)
       const sequenceFetch = fetchSequences(ensemblGeneId)
       const [variants, domains, sequences] = await Promise.all([variantFetch, domainFetch, sequenceFetch])
+      const t1 = [...new Set(variants.map(v => v.ensembl_transcript_stable_id))];
+      const t2 = [...new Set(domains.map(v => v.ensembl_transcript_id))];
+      console.log(t1)
+      console.log(t2)
       res.status(200).send({
         variants,
         domains,
