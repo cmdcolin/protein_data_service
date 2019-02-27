@@ -152,45 +152,29 @@ function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
       ),
     )
 }
-function startServer() {
-  const app = express()
-  const port = 2999
 
-  app.get('/', async (req, res, next) => {
-    try {
-      const { ensemblGeneId, ensemblTranscriptId } = req.query
-      if (!ensemblGeneId) {
-        throw new Error('no ensemblGeneId specified')
-      }
-      const variantFetch = fetchVariants(ensemblGeneId, ensemblTranscriptId)
-      const domainFetch = fetchDomains(ensemblGeneId, ensemblTranscriptId)
-      const sequenceFetch = fetchSequences(ensemblGeneId)
-      const [variants, domains, sequences] = await Promise.all([variantFetch, domainFetch, sequenceFetch])
-      res.status(200).send({
-        variants,
-        domains,
-        sequences
-      })
-    } catch (error) {
-      next(error)
+
+const app = express()
+
+app.get('/', async (req, res, next) => {
+  try {
+    const { ensemblGeneId, ensemblTranscriptId } = req.query
+    if (!ensemblGeneId) {
+      throw new Error('no ensemblGeneId specified')
     }
-  })
-  app.listen(port, () => {
-    console.log(
-      `Demo data service listening on port ${port}. \n\nTry it out with\n     curl http://localhost:${port}/?ensemblGeneId=ENSG00000000003`,
-    )
-  })
-}
+    const variantFetch = fetchVariants(ensemblGeneId, ensemblTranscriptId)
+    const domainFetch = fetchDomains(ensemblGeneId, ensemblTranscriptId)
+    const sequenceFetch = fetchSequences(ensemblGeneId)
+    const [variants, domains, sequences] = await Promise.all([variantFetch, domainFetch, sequenceFetch])
+    res.status(200).send({
+      variants,
+      domains,
+      sequences
+    })
+  } catch (error) {
+    next(error)
+  }
+})
 
-console.log('parsing variant frequencies before app startup, please wait...')
-const filename = 'data/frequencies.txt.gz'
-zlib
-  .gunzipSync(fs.readFileSync(filename))
-  .toString()
-  .split('\n')
-  .forEach(line => {
-    const [variantId, count] = line.split('\t')
-    varFreqs[variantId] = +count
-  })
-console.log('done')
-startServer()
+
+module.exports = app

@@ -9,7 +9,7 @@ Collects some data from different resources about genes/proteins
 
 ## Run
 
-    node server.js
+    yarn start
 
 ## Usage
 
