@@ -37,7 +37,8 @@ Returns JSON object of format
 
     {
       variants: [],
-      domains: []
+      domains: [],
+      sequences: []
     }
 
 A sample variant is
@@ -86,4 +87,15 @@ A sample domain is
       interpro_start: "18",
       interpro_end: "235"
     },
+
+A sample sequence is
+
+  {
+    desc: null,
+    query: "ENSG00000000003",
+    id: "ENSP00000482894",
+    seq: "MLKLYAMFLTLVFLVELVAAIVGFVFRHEIKNSFKNNYEKALKQYNSTGDYRSHAVDKIQNTLHCCGVTDYRDWTDTNYYSEKGFPKSCCKLEDCTPQRDADKVNNEGCFIKVMTIIESEMGVVAGISFGVACFQDI",
+    version: 1,
+    molecule: "protein"
+  }
 
