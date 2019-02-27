@@ -154,6 +154,7 @@ function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
       ),
     )
 }
+<<<<<<< e2503658d1034e9b1149e0dd1616ac1e0c1b6b67:server.js
 function startServer() {
   const app = express()
   const port = 2999
@@ -218,15 +219,33 @@ function startServer() {
       res.status(200).send(transcriptMap)
     } catch (error) {
       next(error)
-    }
-  })
-  app.listen(port, () => {
-    console.log(
-      `Demo data service listening on port ${port}. \n\nTry it out with\n     curl http://localhost:${port}/?ensemblGeneId=ENSG00000000003`,
-    )
-  })
-}
+=======
 
+
+const app = express()
+
+app.get('/', async (req, res, next) => {
+  try {
+    const { ensemblGeneId, ensemblTranscriptId } = req.query
+    if (!ensemblGeneId) {
+      throw new Error('no ensemblGeneId specified')
+>>>>>>> Break into server/app for testability reasons:src/app.js
+    }
+    const variantFetch = fetchVariants(ensemblGeneId, ensemblTranscriptId)
+    const domainFetch = fetchDomains(ensemblGeneId, ensemblTranscriptId)
+    const sequenceFetch = fetchSequences(ensemblGeneId)
+    const [variants, domains, sequences] = await Promise.all([variantFetch, domainFetch, sequenceFetch])
+    res.status(200).send({
+      variants,
+      domains,
+      sequences
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+<<<<<<< e2503658d1034e9b1149e0dd1616ac1e0c1b6b67:server.js
 process.stdout.write(
   'parsing variant frequencies before app startup, please wait...',
 )
@@ -241,3 +260,7 @@ zlib
   })
 console.log('done')
 startServer()
+=======
+
+module.exports = app
+>>>>>>> Break into server/app for testability reasons:src/app.js
