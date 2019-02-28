@@ -4,7 +4,6 @@ const fs = require('fs')
 const cors = require('cors')
 const express = require('express')
 const fetch = require('cross-fetch')
-const zlib = require('zlib')
 
 const varFreqs = {}
 
@@ -157,9 +156,14 @@ function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
     .then(r => r.text())
     .then(text => parseText(text, attributes))
     .then(variants => {
-      return variants.map(v => {
-        return Object.assign(v, { count: varFreqs[v.refsnp_id] })
-      })
+
+      const varlist = variants.map(v => v.refsnp_id)
+
+      db.each("SELECT count FROM variants where variant_id IN (?)", varlist, function(err, row) {
+        console.log(row.id + ": " + row.info);
+        });
+        return variats
+
     })
     .then(variants =>
       variants.filter(
@@ -273,17 +277,5 @@ function startServer() {
   })
 }
 
-process.stdout.write(
-  'parsing variant frequencies before app startup, please wait...',
-)
-const filename = 'data/frequencies.txt.gz'
-zlib
-  .gunzipSync(fs.readFileSync(filename))
-  .toString()
-  .split('\n')
-  .forEach(line => {
-    const [variantId, count] = line.split('\t')
-    varFreqs[variantId] = +count
-  })
-console.log('done')
+
 startServer()
