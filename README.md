@@ -38,64 +38,36 @@ Returns JSON object of format
     {
       variants: [],
       domains: [],
-      sequences: []
+      protein: []
     }
 
-A sample variant is
+A sample element of the variant array is
 
     {
-      refsnp_id: "COSM5878431",
-      refsnp_source: "COSMIC",
-      chr_name: "X",
-      chrom_start: "100630833",
-      chrom_end: "100630833",
-      ensembl_gene_stable_id: "ENSG00000000003",
-      ensembl_transcript_stable_id: "ENST00000373020",
-      ensembl_transcript_chrom_strand: "-1",
-      ensembl_type: "protein_coding",
-      consequence_type_tv: "coding_sequence_variant",
-      consequence_allele_string: "G/COSMIC_MUTATION",
-      cdna_start: "815",
-      cdna_end: "815",
-      ensembl_peptide_allele: "",
-      translation_start: "235",
-      translation_end: "235",
-      cds_start: "703",
-      cds_end: "703",
-      distance_to_transcript: "2163",
-      count: 2
-    },
+      "uniqueId": "COSM1736737",
+      "start": 236,
+      "end": 237,
+      "seq_id": "TSPAN6",
+      "score": 1
+    }
 
-A sample domain is
+A sample element of the domain array is
 
     {
-      ensembl_gene_id: "ENSG00000000003",
-      uniprotswissprot: "O43657",
-      entrezgene: "7105",
-      refseq_mrna: "NM_003270",
-      description: "tetraspanin 6 [Source:HGNC Symbol;Acc:HGNC:11858]",
-      chromosome_name: "X",
-      start_position: "100627109",
-      end_position: "100639991",
-      external_gene_name: "TSPAN6",
-      ensembl_transcript_id: "ENST00000373020",
-      family: "PTHR19282_SF169",
-      family_description: "TETRASPANIN 6 TSPAN 6 TRANSMEMBRANE 4 SUPERFAMILY MEMBER 6",
-      interpro: "IPR018499",
-      interpro_short_description: "Tetraspanin/Peripherin",
-      interpro_description: "Tetraspanin/Peripherin",
-      interpro_start: "18",
-      interpro_end: "235"
-    },
+      "uniqueId": "IPR000301_8_245",
+      "start": 8,
+      "end": 245,
+      "seq_id": "TSPAN6",
+      "type": "Tetraspanin"
+    }
 
 A sample sequence is
 
-  {
-    desc: null,
-    query: "ENSG00000000003",
-    id: "ENSP00000482894",
-    seq: "MLKLYAMFLTLVFLVELVAAIVGFVFRHEIKNSFKNNYEKALKQYNSTGDYRSHAVDKIQNTLHCCGVTDYRDWTDTNYYSEKGFPKSCCKLEDCTPQRDADKVNNEGCFIKVMTIIESEMGVVAGISFGVACFQDI",
-    version: 1,
-    molecule: "protein"
-  }
-
+    
+    {
+      "name": "TSPAN6",
+      "sequences": {
+        "aminoAcid": "MASPSRRLQTKPVITCFKSVLLIYTFIFWITGVILLAVGIWGKVSLENYFSLLNEKATNVPFVLIATGTVIILLGTFGCFATCRASAWMLKLYAMFLTLVFLVELVAAIVGFVFRHEIKNSFKNNYEKALKQYNSTGDYRSHAVDKIQNTLHCCGVTDYRDWTDTNYYSEKGFPKSCCKLEDCTPQRDADKVNNEGCFIKVMTIIESEMGVVAGISFGVACFQLIGIFLAYCLSRAITNNQYEIV",
+        "translatedDna": "ATGGCGTCCCCGTCTCGGAGACTGCAGACTAAACCAGTCATTACTTGTTTCAAGAGCGTTCTGCTAATCTACACTTTTATTTTCTGGATCACTGGCGTTATCCTTCTTGCAGTTGGCATTTGGGGCAAGGTGAGCCTGGAGAATTACTTTTCTCTTTTAAATGAGAAGGCCACCAATGTCCCCTTCGTGCTCATTGCTACTGGTACCGTCATTATTCTTTTGGGCACCTTTGGTTGTTTTGCTACCTGCCGAGCTTCTGCATGGATGCTAAAACTGTATGCAATGTTTCTGACTCTCGTTTTTTTGGTCGAACTGGTCGCTGCCATCGTAGGATTTGTTTTCAGACATGAGATTAAGAACAGCTTTAAGAATAATTATGAGAAGGCTTTGAAGCAGTATAACTCTACAGGAGATTATAGAAGCCATGCAGTAGACAAGATCCAAAATACGTTGCATTGTTGTGGTGTCACCGATTATAGAGATTGGACAGATACTAATTATTACTCAGAAAAAGGATTTCCTAAGAGTTGCTGTAAACTTGAAGATTGTACTCCACAGAGAGATGCAGACAAAGTAAACAATGAAGGTTGTTTTATAAAGGTGATGACCATTATAGAGTCAGAAATGGGAGTCGTTGCAGGAATTTCCTTTGGAGTTGCTTGCTTCCAACTGATTGGAATCTTTCTCGCCTACTGCCTCTCTCGTGCCATAACAAATAACCAGTATGAGATAGTG"
+      }
+    }
