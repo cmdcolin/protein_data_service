@@ -7,6 +7,7 @@ const sqlite = require('sqlite')
 const Cache = require('file-system-cache').default
 
 const cache = Cache()
+const cache2 = Cache({ns: 'vars'})
 
 
 const dbPromise = sqlite.open('./variants.db', { Promise })
@@ -158,32 +159,43 @@ async function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
     query: { query },
   })
 
-  return fetch(bioMartQueryUrl)
+  let variants = await cache2.get(ensemblGeneId)
+  if(!variants) variants = await fetch(bioMartQueryUrl)
     .then(r => r.text())
     .then(text => parseText(text, attributes))
-    .then(async variants => {
-      const sel = [...new Set(variants.map(v => v.refsnp_id))]
-      const db = await dbPromise
-      const ret = await db.all(`select * from variants where variant_id in (${sel.map(_ => '?')})`, sel)
-      const map = {}
-      ret.forEach(row => {
-        map[row.variant_id] = row.count
-      })
-      variants.forEach(variant => {
-        variant.count = map[variant.refsnp_id]
-      })
-      return variants
+    .then(text => {
+      cache2.set(ensemblGeneId, text)
+      return text
     })
-    .then(variants =>
-      variants.filter(
-        v =>
-          !ensemblTranscriptId ||
-          v.ensembl_transcript_stable_id === ensemblTranscriptId,
-      ),
-    )
-    .then(variants =>
-      variants.filter(v => v.translation_start <= v.translation_end),
-    )
+  else  console.log(`found ${ensemblGeneId} in variant cache`)
+
+
+
+  const sel = [...new Set(variants.map(v => v.refsnp_id))]
+  const db = await dbPromise
+  let slices = []
+  console.log(sel.length)
+  for(let i = 0; i < sel.length; i+=999) {
+    console.log(i,i+999)
+    slices.push(sel.slice(i, i+999))
+  }
+  const lists = await Promise.all(slices.map(s => db.all(`select * from variants where variant_id in (${s.map(_ => '?')})`, s)))
+  const ret = lists.flat()
+
+  const map = {}
+  ret.forEach(row => {
+    map[row.variant_id] = row.count
+  })
+  variants.forEach(variant => {
+    variant.count = map[variant.refsnp_id]
+  })
+  variants = variants.filter(
+    v =>
+      !ensemblTranscriptId ||
+      v.ensembl_transcript_stable_id === ensemblTranscriptId,
+  )
+  variants = variants.filter(v => v.translation_start <= v.translation_end)
+  return variants
 }
 function startServer() {
   const app = express()
@@ -282,7 +294,7 @@ function startServer() {
       cache.set(ensemblGeneId, ret2)
       res.status(200).send(ret2)
     } catch (error) {
-      next({ error: error.message })
+      next(error)
     }
   })
   app.listen(port, () => {
