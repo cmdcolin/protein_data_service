@@ -265,7 +265,7 @@ function startServer() {
         variants: ret.variants.map(v =>({
             uniqueId: v.refsnp_id,
             start: v.translation_start,
-            end: v.translation_end,
+            end: v.translation_end+1,
             seq_id: gene,
             score: v.count,
           })
