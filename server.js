@@ -4,6 +4,9 @@ const fs = require('fs')
 const cors = require('cors')
 const express = require('express')
 const fetch = require('cross-fetch')
+const sqlite = require('sqlite')
+
+const dbPromise = sqlite.open('./variants.db', { Promise });
 
 const varFreqs = {}
 
@@ -108,7 +111,7 @@ function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
     )
 }
 
-function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
+async function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
   const attributes = {
     refsnp_id: 'string',
     refsnp_source: 'string',
@@ -137,7 +140,7 @@ function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
 
   const query = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Query>
-<Query  virtualSchemaName = "default" formatter = "TSV" header = "0" uniqueRows = "0" count = "" datasetConfigVersion = "0.6" >
+<Query  virtualSchemaName = "default" formatter = "TSV" header = "0" uniqueRows = "1" count = "" datasetConfigVersion = "0.6" >
 
 	<Dataset name = "hsapiens_snp_som" interface = "default" >
     <Filter name = "variation_source" value = "COSMIC"/>
@@ -152,18 +155,23 @@ function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
     pathname: '/biomart/martservice',
     query: { query },
   })
+
   return fetch(bioMartQueryUrl)
     .then(r => r.text())
     .then(text => parseText(text, attributes))
-    .then(variants => {
-
-      const varlist = variants.map(v => v.refsnp_id)
-
-      db.each("SELECT count FROM variants where variant_id IN (?)", varlist, function(err, row) {
-        console.log(row.id + ": " + row.info);
-        });
-        return variats
-
+    .then(async (variants) => {
+      const sel = [...new Set(variants.map(v => v.refsnp_id))]
+      const db = await dbPromise
+      const q = `select * from variants where variant_id in (${sel.map(_ => "'"+_+"'")})`
+      const map = {}
+      const ret = await db.all(q)
+      ret.forEach(row => {
+        map[row.variant_id] = row.count
+      })
+      variants.forEach(variant => {
+        variant.count = map[variant.refsnp_id]
+      })
+      return variants
     })
     .then(variants =>
       variants.filter(
@@ -173,7 +181,7 @@ function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
       ),
     ).then(variants =>
       variants.filter(
-        v => v.translation_start<v.translation_end
+        v => v.translation_start<=v.translation_end
       )
     )
 }
@@ -246,24 +254,22 @@ function startServer() {
             translatedDna: ret.translatedSeq.slice(0, -3)
           }
         },
-        domains: ret.domains.map(d => {
-          return {
+        domains: ret.domains.map(d =>({
             uniqueId: `${d.interpro}_${d.interpro_start}_${d.interpro_end}`,
             start: d.interpro_start,
             end: d.interpro_end,
             seq_id: gene,
             type: d.interpro_short_description,
-          }
-        }),
-        variants: ret.variants.map(v => {
-          return {
+          })
+        ),
+        variants: ret.variants.map(v =>({
             uniqueId: v.refsnp_id,
             start: v.translation_start,
             end: v.translation_end,
             seq_id: gene,
             score: v.count,
-          }
-        })
+          })
+        )
       }
       res.status(200).send(ret2)
     } catch (error) {
