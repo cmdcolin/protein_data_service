@@ -4,6 +4,10 @@ const cors = require('cors')
 const express = require('express')
 const fetch = require('cross-fetch')
 const sqlite = require('sqlite')
+const Cache = require('file-system-cache').default
+
+const cache = Cache()
+
 
 const dbPromise = sqlite.open('./variants.db', { Promise })
 
@@ -192,6 +196,13 @@ function startServer() {
       if (!ensemblGeneId) {
         throw new Error('no ensemblGeneId specified')
       }
+      const cachedVal = await cache.get(ensemblGeneId)
+      if(cachedVal) {
+        console.log('using cached value')
+        res.status(200).send(cachedVal)
+        return
+      }
+
       const variantFetch = fetchVariants(ensemblGeneId, ensemblTranscriptId)
       const domainFetch = fetchDomains(ensemblGeneId, ensemblTranscriptId)
       const sequenceFetch = fetchSequences(ensemblGeneId)
@@ -268,6 +279,7 @@ function startServer() {
           score: v.count,
         })),
       }
+      cache.set(ensemblGeneId, ret2)
       res.status(200).send(ret2)
     } catch (error) {
       next({ error: error.message })

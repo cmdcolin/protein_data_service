@@ -5,6 +5,7 @@
     "cors": "^2.8.5",
     "cross-fetch": "^3.0.1",
     "express": "^4.16.4",
+    "file-system-cache": "^1.0.5",
     "sqlite": "^3.0.2"
   },
   "scripts": {
