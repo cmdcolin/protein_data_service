@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 const url = require('url')
-const fs = require('fs')
 const cors = require('cors')
 const express = require('express')
 const fetch = require('cross-fetch')
 const sqlite = require('sqlite')
 
-const dbPromise = sqlite.open('./variants.db', { Promise });
+const dbPromise = sqlite.open('./variants.db', { Promise })
 
 const varFreqs = {}
 
@@ -57,7 +56,6 @@ function fetchCds(ensemblGeneId) {
   })
   return fetch(ensemblApiQueryUrl).then(r => r.json())
 }
-
 
 function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
   const attributes = {
@@ -159,12 +157,11 @@ async function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
   return fetch(bioMartQueryUrl)
     .then(r => r.text())
     .then(text => parseText(text, attributes))
-    .then(async (variants) => {
+    .then(async variants => {
       const sel = [...new Set(variants.map(v => v.refsnp_id))]
       const db = await dbPromise
-      const q = `select * from variants where variant_id in (${sel.map(_ => "'"+_+"'")})`
+      const ret = await db.all(`select * from variants where variant_id in (${sel.map(_ => '?')})`, sel)
       const map = {}
-      const ret = await db.all(q)
       ret.forEach(row => {
         map[row.variant_id] = row.count
       })
@@ -179,10 +176,9 @@ async function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
           !ensemblTranscriptId ||
           v.ensembl_transcript_stable_id === ensemblTranscriptId,
       ),
-    ).then(variants =>
-      variants.filter(
-        v => v.translation_start<=v.translation_end
-      )
+    )
+    .then(variants =>
+      variants.filter(v => v.translation_start <= v.translation_end),
     )
 }
 function startServer() {
@@ -204,8 +200,11 @@ function startServer() {
         variantFetch,
         domainFetch,
         sequenceFetch,
-        cdsFetch
+        cdsFetch,
       ])
+      if (!domains.length) {
+        throw new Error('non-protein coding gene specified')
+      }
 
       const transcriptsFromDomains = [
         ...new Set(domains.map(v => v.ensembl_transcript_id)),
@@ -251,29 +250,27 @@ function startServer() {
           name: ret.name,
           sequences: {
             aminoAcid: ret.sequence,
-            translatedDna: ret.translatedSeq.slice(0, -3)
-          }
+            translatedDna: ret.translatedSeq.slice(0, -3),
+          },
         },
-        domains: ret.domains.map(d =>({
-            uniqueId: `${d.interpro}_${d.interpro_start}_${d.interpro_end}`,
-            start: d.interpro_start,
-            end: d.interpro_end,
-            seq_id: gene,
-            type: d.interpro_short_description,
-          })
-        ),
-        variants: ret.variants.map(v =>({
-            uniqueId: v.refsnp_id,
-            start: v.translation_start,
-            end: v.translation_end+1,
-            seq_id: gene,
-            score: v.count,
-          })
-        )
+        domains: ret.domains.map(d => ({
+          uniqueId: `${d.interpro}_${d.interpro_start}_${d.interpro_end}`,
+          start: d.interpro_start,
+          end: d.interpro_end,
+          seq_id: gene,
+          type: d.interpro_short_description,
+        })),
+        variants: ret.variants.map(v => ({
+          uniqueId: v.refsnp_id,
+          start: v.translation_start,
+          end: v.translation_end + 1,
+          seq_id: gene,
+          score: v.count,
+        })),
       }
       res.status(200).send(ret2)
     } catch (error) {
-      next(error)
+      next({ error: error.message })
     }
   })
   app.listen(port, () => {
@@ -282,6 +279,5 @@ function startServer() {
     )
   })
 }
-
 
 startServer()
