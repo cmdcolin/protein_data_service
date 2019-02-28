@@ -26,7 +26,7 @@ The reason a transcript ID cannot be specified by itself is that the variation b
 
 Accesses protein domains and COSMIC variants from BioMart
 
-The count level information is parsed from  CosmicCodingMuts.vcf from release v87, 13th November 2018
+The count level information is parsed from  CosmicCodingMuts.vcf from release v87, 13th November 2018. It is pre-processed and loaded into sqlite
 
 Currently accessing Ensembl 95 from biomart
 
