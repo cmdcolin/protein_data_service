@@ -7,19 +7,9 @@ const sqlite = require('sqlite')
 const Cache = require('file-system-cache').default
 
 const cache = Cache()
-const cache2 = Cache({ns: 'vars'})
-
+const cache2 = Cache({ ns: 'vars' })
 
 const dbPromise = sqlite.open('./variants.db', { Promise })
-
-const varFreqs = {}
-
-// unused
-// function fetchGeneInfo(entrezGene) {
-//   return fetch(`http://mygene.info/v3/gene/${entrezGene}`)
-//     .then(res => res.text())
-//     .then(text => JSON.parse(text))
-// }
 
 function parseText(text, attributes) {
   const lines = text.split(/\s*\n\s*/).filter(line => /\S/.test(line))
@@ -62,7 +52,7 @@ function fetchCds(ensemblGeneId) {
   return fetch(ensemblApiQueryUrl).then(r => r.json())
 }
 
-function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
+function fetchDomains(ensemblGeneId) {
   const attributes = {
     ensembl_gene_id: 'string',
     ensembl_transcript_id: 'string',
@@ -105,16 +95,9 @@ function fetchDomains(ensemblGeneId, ensemblTranscriptId) {
   return fetch(bioMartQueryUrl)
     .then(r => r.text())
     .then(text => parseText(text, attributes))
-    .then(domains =>
-      domains.filter(
-        d =>
-          !ensemblTranscriptId ||
-          d.ensembl_transcript_id === ensemblTranscriptId,
-      ),
-    )
 }
 
-async function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
+async function fetchVariants(ensemblGeneId) {
   const attributes = {
     refsnp_id: 'string',
     refsnp_source: 'string',
@@ -160,40 +143,42 @@ async function fetchVariants(ensemblGeneId, ensemblTranscriptId) {
   })
 
   let variants = await cache2.get(ensemblGeneId)
-  if(!variants) variants = await fetch(bioMartQueryUrl)
-    .then(r => r.text())
-    .then(text => parseText(text, attributes))
-    .then(text => {
-      cache2.set(ensemblGeneId, text)
-      return text
-    })
-  else  console.log(`found ${ensemblGeneId} in variant cache`)
-
-
+  if (!variants) {
+    variants = await fetch(bioMartQueryUrl)
+      .then(r => r.text())
+      .then(text => parseText(text, attributes))
+      .then(text => {
+        cache2.set(ensemblGeneId, text)
+        return text
+      })
+  } else {
+    console.log(`found ${ensemblGeneId} in variant cache`)
+  }
 
   const sel = [...new Set(variants.map(v => v.refsnp_id))]
   const db = await dbPromise
-  let slices = []
-  console.log(sel.length)
-  for(let i = 0; i < sel.length; i+=999) {
-    console.log(i,i+999)
-    slices.push(sel.slice(i, i+999))
+  const slices = []
+  for (let i = 0; i < sel.length; i += 999) {
+    slices.push(sel.slice(i, i + 999))
   }
-  const lists = await Promise.all(slices.map(s => db.all(`select * from variants where variant_id in (${s.map(_ => '?')})`, s)))
+  const lists = await Promise.all(
+    slices.map(s =>
+      db.all(
+        `select * from variants where variant_id in (${s.map(() => '?')})`,
+        s,
+      ),
+    ),
+  )
   const ret = lists.flat()
 
   const map = {}
   ret.forEach(row => {
     map[row.variant_id] = row.count
   })
-  variants.forEach(variant => {
-    variant.count = map[variant.refsnp_id]
-  })
-  variants = variants.filter(
-    v =>
-      !ensemblTranscriptId ||
-      v.ensembl_transcript_stable_id === ensemblTranscriptId,
-  )
+  for (let i = 0; i < variants.length; i += 1) {
+    variants[i].count = map[variants[i].refsnp_id]
+  }
+
   variants = variants.filter(v => v.translation_start <= v.translation_end)
   return variants
 }
@@ -204,19 +189,19 @@ function startServer() {
 
   app.get('/', async (req, res, next) => {
     try {
-      const { ensemblGeneId, ensemblTranscriptId } = req.query
+      const { ensemblGeneId } = req.query
       if (!ensemblGeneId) {
         throw new Error('no ensemblGeneId specified')
       }
       const cachedVal = await cache.get(ensemblGeneId)
-      if(cachedVal) {
+      if (cachedVal) {
         console.log('using cached value')
         res.status(200).send(cachedVal)
         return
       }
 
-      const variantFetch = fetchVariants(ensemblGeneId, ensemblTranscriptId)
-      const domainFetch = fetchDomains(ensemblGeneId, ensemblTranscriptId)
+      const variantFetch = fetchVariants(ensemblGeneId)
+      const domainFetch = fetchDomains(ensemblGeneId)
       const sequenceFetch = fetchSequences(ensemblGeneId)
       const cdsFetch = fetchCds(ensemblGeneId)
       const [variants, domains, sequences, cds] = await Promise.all([
@@ -241,6 +226,7 @@ function startServer() {
               transcriptMap[t] = { variants: [], domains: [] }
             }
             transcriptMap[t].domains.push(d)
+            transcriptMap[t].name = d.external_gene_name
             transcriptMap[t].protein_id = d.ensembl_peptide_id
             transcriptMap[t].name = d.external_gene_name
           }
@@ -265,10 +251,10 @@ function startServer() {
           }
         })
       })
-
-      const ret = transcriptMap[transcriptsFromDomains[0]]
-      const gene = ret.domains[0].external_gene_name
-      const ret2 = {
+      const canonTranscriptName = transcriptsFromDomains[0]
+      const ret = transcriptMap[canonTranscriptName]
+      console.log(canonTranscriptName)
+      const feature = {
         protein: {
           name: ret.name,
           sequences: {
@@ -276,23 +262,28 @@ function startServer() {
             translatedDna: ret.translatedSeq.slice(0, -3),
           },
         },
-        domains: ret.domains.map(d => ({
-          uniqueId: `${d.interpro}_${d.interpro_start}_${d.interpro_end}`,
-          start: d.interpro_start,
-          end: d.interpro_end,
-          seq_id: gene,
-          type: d.interpro_short_description,
-        })),
-        variants: ret.variants.map(v => ({
-          uniqueId: v.refsnp_id,
-          start: v.translation_start,
-          end: v.translation_end + 1,
-          seq_id: gene,
-          score: v.count,
-        })),
+        domains: ret.domains
+          .filter(d => d.ensembl_transcript_id === canonTranscriptName)
+          .map(d => ({
+            uniqueId: `${d.interpro}_${d.interpro_start}_${d.interpro_end}`,
+            start: d.interpro_start,
+            end: d.interpro_end,
+            seq_id: ret.name,
+            type: d.interpro_short_description,
+          })),
+        variants: ret.variants
+          .filter(v => v.ensembl_transcript_stable_id === canonTranscriptName)
+          .map(v => ({
+            uniqueId: v.refsnp_id,
+            start: v.translation_start,
+            transcript: v.ensembl_transcript_stable_id,
+            end: v.translation_end + 1,
+            seq_id: ret.name,
+            score: v.count,
+          })),
       }
-      cache.set(ensemblGeneId, ret2)
-      res.status(200).send(ret2)
+      cache.set(ensemblGeneId, feature)
+      res.status(200).send(feature)
     } catch (error) {
       next(error)
     }
